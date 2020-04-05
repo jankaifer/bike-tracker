@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/bike-tracker/static/css/main.3b585c29.chunk.css",
-    "main.js": "/bike-tracker/static/js/main.63579963.chunk.js",
-    "main.js.map": "/bike-tracker/static/js/main.63579963.chunk.js.map",
+    "main.js": "/bike-tracker/static/js/main.f82bf5d3.chunk.js",
+    "main.js.map": "/bike-tracker/static/js/main.f82bf5d3.chunk.js.map",
     "runtime-main.js": "/bike-tracker/static/js/runtime-main.cfe23764.js",
     "runtime-main.js.map": "/bike-tracker/static/js/runtime-main.cfe23764.js.map",
     "static/js/2.891a9a87.chunk.js": "/bike-tracker/static/js/2.891a9a87.chunk.js",
     "static/js/2.891a9a87.chunk.js.map": "/bike-tracker/static/js/2.891a9a87.chunk.js.map",
     "index.html": "/bike-tracker/index.html",
-    "precache-manifest.fae7540aa2628528967d1d0e13e67af7.js": "/bike-tracker/precache-manifest.fae7540aa2628528967d1d0e13e67af7.js",
+    "precache-manifest.c466035ad5016fb056773690796f5a6c.js": "/bike-tracker/precache-manifest.c466035ad5016fb056773690796f5a6c.js",
     "service-worker.js": "/bike-tracker/service-worker.js",
     "static/css/main.3b585c29.chunk.css.map": "/bike-tracker/static/css/main.3b585c29.chunk.css.map",
     "static/js/2.891a9a87.chunk.js.LICENSE.txt": "/bike-tracker/static/js/2.891a9a87.chunk.js.LICENSE.txt"
@@ -17,6 +17,6 @@
     "static/js/runtime-main.cfe23764.js",
     "static/js/2.891a9a87.chunk.js",
     "static/css/main.3b585c29.chunk.css",
-    "static/js/main.63579963.chunk.js"
+    "static/js/main.f82bf5d3.chunk.js"
   ]
 }
