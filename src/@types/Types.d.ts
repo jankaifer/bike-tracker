@@ -13,6 +13,7 @@ declare type TrackPoint = {
 };
 
 declare type Track = {
+  name: string;
   id: string;
   positions: TrackPoint[];
   startTime: number;

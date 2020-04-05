@@ -1,9 +1,42 @@
-import { toJS, observable, action, computed, autorun } from "mobx";
+import { observe, observable, action, computed } from "mobx";
 import { v4 as uuid } from "uuid";
 import parseTrack from "parse-gpx/src/parseTrack";
 import xml2js from "xml2js";
 import dayjs from "dayjs";
-import Cookies from "js-cookie";
+
+const storeVersion = 2;
+
+const stringToColour = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let colour = "#";
+  for (let i = 0; i < 3; i++) {
+    let value = (hash >> (i * 8)) & 0xff;
+    colour += ("00" + value.toString(16)).substr(-2);
+  }
+  return colour;
+};
+
+const getColor = (id: string, index: number) => {
+  const niceColors = [
+    "#CC0000",
+    "#FF8000",
+    "#FFFF00",
+    "#00FF00",
+    "#0080FF",
+    "#7F00FF",
+    "#FF00FF",
+    "#663300",
+  ];
+
+  if (index < niceColors.length) {
+    return niceColors[index];
+  } else {
+    return stringToColour(id);
+  }
+};
 
 const avg = (a: number, b: number, aw: number, bw: number) =>
   aw === 0 ? b : (a * aw + b * bw) / (aw + bw);
@@ -17,7 +50,7 @@ const convertToTrackPoint = (data: any) =>
     timestamp: dayjs(data.timestamp).valueOf(),
   } as Partial<TrackPoint>);
 
-const parseGPX = async (data: string, id: string) => {
+const parseGPX = async (data: string, id: string, name: string) => {
   const parser = new xml2js.Parser();
   const positions = (await new Promise((res, rej) =>
     parser.parseString(data, (err: any, xml: any) => {
@@ -36,11 +69,12 @@ const parseGPX = async (data: string, id: string) => {
     (position) =>
       ({
         ...position,
-        ralativeTime: position.timestamp - startTime,
+        relativeTime: position.timestamp - startTime,
       } as TrackPoint)
   );
 
   return {
+    name,
     id,
     positions: relativePositions,
     startTime,
@@ -50,15 +84,27 @@ const parseGPX = async (data: string, id: string) => {
 };
 
 class Store {
-  @observable tracks: Track[] = [];
+  @observable tracksById: { [key: string]: Track } = {};
   @observable currentTime = 0;
+  @observable autoIncrement = false;
+
+  @computed get tracks() {
+    return Object.values(this.tracksById);
+  }
 
   constructor() {
-    const tracks = Cookies.get("tracks");
-    if (tracks) this.tracks = tracks;
+    if (
+      JSON.parse(window.localStorage.getItem("storeVersion") || "-1") ===
+      storeVersion
+    ) {
+      console.log("restoring");
 
-    const currentTime = Cookies.get("currentTime");
-    if (currentTime) this.currentTime = currentTime;
+      const tracksById = window.localStorage.getItem("tracksById");
+      if (tracksById) this.tracksById = JSON.parse(tracksById);
+
+      const currentTime = window.localStorage.getItem("currentTime");
+      if (currentTime) this.currentTime = JSON.parse(currentTime);
+    }
   }
 
   @computed get maxTime() {
@@ -67,18 +113,26 @@ class Store {
     );
   }
 
-  @action addTrack = async (track: string) =>
-    this.tracks.push(await parseGPX(track, uuid()));
+  @action addTrack = async (track: string, name: string) => {
+    const id = uuid();
+    this.tracksById[id] = await parseGPX(track, id, name);
+  };
+
+  @action removeTrack = (id: string) => {
+    delete this.tracksById[id];
+  };
 
   getCurrentPoint = (id: string) => {
     const track = this.tracks.find(({ id: _id }) => _id === id);
     if (!track) throw new Error("id not found");
 
-    const before = track.positions.filter(
-      (point) => point.relativeTime <= this.currentTime
-    )[0];
+    const before = track.positions
+      .filter(
+        (point) => point.relativeTime + track.timeOffset <= this.currentTime
+      )
+      .reverse()[0];
     const after = track.positions.filter(
-      (point) => point.relativeTime >= this.currentTime
+      (point) => point.relativeTime + track.timeOffset >= this.currentTime
     )[0];
 
     if (!before || !after) return null;
@@ -96,20 +150,45 @@ class Store {
         Math.abs(after.relativeTime - this.currentTime),
         Math.abs(before.relativeTime - this.currentTime)
       ),
-    ];
+    ] as [number, number];
+  };
+
+  persist = () => {
+    const tracksById = JSON.stringify(store.tracksById);
+    const currentTime = JSON.stringify(store.currentTime);
+
+    window.localStorage.setItem("tracksById", tracksById);
+    window.localStorage.setItem("currentTime", currentTime);
+    window.localStorage.setItem("storeVersion", JSON.stringify(storeVersion));
+  };
+
+  getTrackColor = (id: string) => {
+    return getColor(
+      id,
+      (this.tracks
+        .map((track, i) => [track.id, i] as [string, number])
+        .find((pair) => pair[0] === id) || ["", Infinity])[1]
+    );
   };
 }
 
 const store = new Store();
 
-autorun((reaction) => {
-  Cookies.set("currentTime", toJS(store.currentTime));
-  reaction.dispose();
+(window as any).persist = store.persist;
+
+observe(store.tracksById, () => {
+  store.persist();
 });
 
-autorun((reaction) => {
-  Cookies.set("tracks", toJS(store.tracks));
-  reaction.dispose();
-});
+const SPEED = 60;
+const FPS = 10;
+setInterval(() => {
+  if (store.autoIncrement) {
+    store.currentTime = Math.min(
+      store.currentTime + (SPEED * 1000) / FPS,
+      store.maxTime
+    );
+  }
+}, 1000 / FPS);
 
 export default store;
