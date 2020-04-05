@@ -1,5 +1,6 @@
 {
   "name": "bike-tracker",
+  "homepage": "https://jankaifer.github.io/bike-tracker",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -17,6 +18,8 @@
     "typescript": "~3.7.2"
   },
   "scripts": {
+    "deploy": "gh-pages -d build",
+    "predeploy": "yarn build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
