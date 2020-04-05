@@ -1,8 +1,9 @@
-import { observable, action, computed } from "mobx";
+import { toJS, observable, action, computed, autorun } from "mobx";
 import { v4 as uuid } from "uuid";
 import parseTrack from "parse-gpx/src/parseTrack";
 import xml2js from "xml2js";
 import dayjs from "dayjs";
+import Cookies from "js-cookie";
 
 const avg = (a: number, b: number, aw: number, bw: number) =>
   aw === 0 ? b : (a * aw + b * bw) / (aw + bw);
@@ -52,6 +53,14 @@ class Store {
   @observable tracks: Track[] = [];
   @observable currentTime = 0;
 
+  constructor() {
+    const tracks = Cookies.get("tracks");
+    if (tracks) this.tracks = tracks;
+
+    const currentTime = Cookies.get("currentTime");
+    if (currentTime) this.currentTime = currentTime;
+  }
+
   @computed get maxTime() {
     return Math.max(
       ...this.tracks.map((track) => track.endTime - track.startTime)
@@ -91,4 +100,16 @@ class Store {
   };
 }
 
-export default new Store();
+const store = new Store();
+
+autorun((reaction) => {
+  Cookies.set("currentTime", toJS(store.currentTime));
+  reaction.dispose();
+});
+
+autorun((reaction) => {
+  Cookies.set("tracks", toJS(store.tracks));
+  reaction.dispose();
+});
+
+export default store;
