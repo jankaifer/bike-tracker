@@ -25,7 +25,7 @@ function App() {
       <div style={{ position: "absolute", top: 0, right: 0, zIndex: 1000 }}>
         <Segment>
           <AddTrack />
-          <p>Number of tracks: {store.tracks.length}</p>
+          <p>Number of tracks: {store.rawTracks.length}</p>
         </Segment>
       </div>
       <Map center={[50.0666, 14.853]} zoom={19}>
