@@ -181,7 +181,7 @@ observe(store.tracksById, () => {
 });
 
 const SPEED = 60;
-const FPS = 10;
+const FPS = 60;
 setInterval(() => {
   if (store.autoIncrement) {
     store.currentTime = Math.min(

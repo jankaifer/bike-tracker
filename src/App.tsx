@@ -10,6 +10,12 @@ import Track from "./Track";
 import TrackSettings from "./TrackSettings";
 
 function App() {
+  let seconds = ~~(store.currentTime / 1000);
+  let minutes = ~~(seconds / 60);
+  seconds %= 60;
+  let hours = ~~(minutes / 60);
+  minutes %= 60;
+
   return (
     <div
       className="App"
@@ -55,6 +61,9 @@ function App() {
             >
               {store.autoIncrement ? "Stop" : "Play"}
             </Button>
+            <span style={{ width: "100px" }}>
+              {hours}:{minutes}:{seconds}
+            </span>
             <div style={{ flexGrow: 1 }}>
               <Slider
                 value={store.currentTime}
