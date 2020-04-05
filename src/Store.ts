@@ -141,14 +141,14 @@ class Store {
       avg(
         before.latitude,
         after.latitude,
-        Math.abs(after.relativeTime - this.currentTime),
-        Math.abs(before.relativeTime - this.currentTime)
+        Math.abs(after.relativeTime + track.timeOffset - this.currentTime),
+        Math.abs(before.relativeTime + track.timeOffset - this.currentTime)
       ),
       avg(
         before.longitude,
         after.longitude,
-        Math.abs(after.relativeTime - this.currentTime),
-        Math.abs(before.relativeTime - this.currentTime)
+        Math.abs(after.relativeTime + track.timeOffset - this.currentTime),
+        Math.abs(before.relativeTime + track.timeOffset - this.currentTime)
       ),
     ] as [number, number];
   };
