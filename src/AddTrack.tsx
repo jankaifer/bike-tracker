@@ -9,8 +9,8 @@ const AddTrack = () => {
   const { acceptedFiles, getRootProps, getInputProps } = useDropzone();
 
   const handleSubmit = () => {
-    acceptedFiles.forEach(async (file) =>
-      store.addTrack(await (file as any).text())
+    acceptedFiles.forEach(
+      async (file) => await store.addTrack(await (file as any).text())
     );
     setIsOpen(false);
   };
