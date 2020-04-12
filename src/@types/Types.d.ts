@@ -10,6 +10,7 @@ declare type TrackPoint = {
   relativeTime: number;
   timestamp: number;
   heartrate: number;
+  speed: number;
 };
 
 declare type Track = {

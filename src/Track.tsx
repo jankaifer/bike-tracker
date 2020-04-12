@@ -1,6 +1,9 @@
 import { observer } from "mobx-react";
 import React from "react";
-import { CircleMarker, Polyline } from "react-leaflet";
+import { List, Icon } from "semantic-ui-react";
+import { CircleMarker, Polyline, Popup } from "react-leaflet";
+import { FaMountain } from "react-icons/fa";
+import { IoMdSpeedometer } from "react-icons/io";
 import store from "./Store";
 
 type Props = {
@@ -22,7 +25,38 @@ const Track = ({ track, index }: Props) => {
         )}
       />
       {currentPosition && (
-        <CircleMarker center={currentPosition} color={color} radius={10} />
+        <CircleMarker
+          center={[currentPosition.latitude, currentPosition.longitude]}
+          color={color}
+          radius={10}
+        >
+          <Popup>
+            <List>
+              <List.Item>
+                <Icon name="heart" />
+                <List.Content>
+                  {Math.round(currentPosition.heartrate)}
+                </List.Content>
+              </List.Item>
+              <List.Item>
+                <i className="icon">
+                  <FaMountain />
+                </i>
+                <List.Content>
+                  {Math.round(currentPosition.elevation)} m
+                </List.Content>
+              </List.Item>
+              <List.Item>
+                <i className="icon">
+                  <IoMdSpeedometer />
+                </i>
+                <List.Content>
+                  {Math.round(currentPosition.speed * 36) / 10} km/h
+                </List.Content>
+              </List.Item>
+            </List>
+          </Popup>
+        </CircleMarker>
       )}
     </>
   );

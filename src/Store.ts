@@ -50,31 +50,66 @@ const convertToTrackPoint = (data: any) =>
     timestamp: dayjs(data.timestamp).valueOf(),
   } as Partial<TrackPoint>);
 
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+const getPos = (position: TrackPoint) =>
+  [position.latitude, position.latitude] as [number, number];
+
+const computeDist = (
+  [lat1, lon1]: [number, number],
+  [lat2, lon2]: [number, number]
+) => {
+  const R = 6371e3; // metres
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
+
+const computeSpeed = (pos1: TrackPoint, pos2: TrackPoint) => {
+  const dist = computeDist(getPos(pos1), getPos(pos2));
+  const timeDiff = (pos2.timestamp - pos1.timestamp) / 1000;
+  return timeDiff > 0 ? dist / timeDiff : undefined;
+};
+
 const parseGPX = async (data: string, id: string, name: string) => {
   const parser = new xml2js.Parser();
-  const positions = (await new Promise((res, rej) =>
+  const [positions, trk] = await new Promise<[TrackPoint[], any]>((res, rej) =>
     parser.parseString(data, (err: any, xml: any) => {
       if (err) {
         rej(err);
       } else {
-        res(parseTrack(xml.gpx.trk).map(convertToTrackPoint));
+        res([parseTrack(xml.gpx.trk).map(convertToTrackPoint), xml.gpx.trk]);
       }
     })
-  )) as TrackPoint[];
+  );
   const startTime = Math.min(
     ...positions.map((position) => position.timestamp)
   );
   const endTime = Math.max(...positions.map((position) => position.timestamp));
   const relativePositions = positions.map(
-    (position) =>
+    (position, i) =>
       ({
         ...position,
         relativeTime: position.timestamp - startTime,
+        speed: computeSpeed(
+          positions[i - 1] || position,
+          positions[i + 1] || position
+        ),
       } as TrackPoint)
   );
 
+  console.log(relativePositions);
+
   return {
-    name,
+    name: trk.name || name,
     id,
     positions: relativePositions,
     startTime,
@@ -97,8 +132,6 @@ class Store {
       JSON.parse(window.localStorage.getItem("storeVersion") || "-1") ===
       storeVersion
     ) {
-      console.log("restoring");
-
       const tracksById = window.localStorage.getItem("tracksById");
       if (tracksById) this.tracksById = JSON.parse(tracksById);
 
@@ -137,20 +170,28 @@ class Store {
 
     if (!before || !after) return null;
 
-    return [
+    const computeMiddle = (a: number, b: number) =>
       avg(
-        before.latitude,
-        after.latitude,
+        a,
+        b,
         Math.abs(after.relativeTime + track.timeOffset - this.currentTime),
         Math.abs(before.relativeTime + track.timeOffset - this.currentTime)
-      ),
-      avg(
-        before.longitude,
-        after.longitude,
-        Math.abs(after.relativeTime + track.timeOffset - this.currentTime),
-        Math.abs(before.relativeTime + track.timeOffset - this.currentTime)
-      ),
-    ] as [number, number];
+      );
+
+    const computeProp = (prop: keyof typeof before & keyof typeof after) =>
+      computeMiddle(before[prop], after[prop]);
+
+    const outVal: TrackPoint = {
+      elevation: computeProp("elevation"),
+      latitude: computeProp("latitude"),
+      longitude: computeProp("longitude"),
+      heartrate: computeProp("heartrate"),
+      relativeTime: computeProp("relativeTime"),
+      timestamp: computeProp("timestamp"),
+      speed: computeProp("speed"),
+    };
+
+    return outVal;
   };
 
   persist = () => {
