@@ -1,6 +1,6 @@
 {
   "name": "bike-tracker",
-  "homepage": "https://jankaifer.github.io/bike-tracker",
+  "homepage": ".",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
