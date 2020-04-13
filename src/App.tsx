@@ -2,12 +2,13 @@ import { observer } from "mobx-react";
 import React, { useState } from "react";
 import { Map, TileLayer } from "react-leaflet";
 import { Slider } from "react-semantic-ui-range";
-import { Segment, Button, Popup, Form, Icon } from "semantic-ui-react";
+import { Segment, Button, Popup, Form, Icon, Modal } from "semantic-ui-react";
 import AddTrack from "./AddTrack";
 import "./App.css";
 import store from "./Store";
 import Track from "./Track";
 import TrackSettings from "./TrackSettings";
+import FileRenamer from "./FineRenamer";
 
 function App() {
   let seconds = ~~(store.currentTime / 1000);
@@ -117,6 +118,7 @@ function App() {
                 }}
               />
             </div>
+            <FileRenamer />
           </Segment>
         </div>
       )}
