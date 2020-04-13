@@ -51,7 +51,7 @@ const Track = ({ track, index }: Props) => {
                   <IoMdSpeedometer />
                 </i>
                 <List.Content>
-                  {Math.round(currentPosition.speed * 36) / 10} km/h
+                  {Math.round(currentPosition.speed * 3.6)} km/h
                 </List.Content>
               </List.Item>
             </List>

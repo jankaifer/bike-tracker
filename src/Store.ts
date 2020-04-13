@@ -1,9 +1,8 @@
-import { observe, observable, action, computed } from "mobx";
+import { observe, observable, action, computed, runInAction } from "mobx";
 import { v4 as uuid } from "uuid";
 import parseTrack from "parse-gpx/src/parseTrack";
 import xml2js from "xml2js";
 import dayjs from "dayjs";
-import { access } from "fs";
 
 const storeVersion = 2;
 
@@ -98,7 +97,6 @@ const parseGPX = async (data: string, id: string, name: string) => {
         ),
       } as TrackPoint)
   );
-  console.log(relativePositions);
 
   return {
     name: trk[0]?.name || name,
@@ -275,11 +273,13 @@ class Store {
       )
     );
 
-    Object.keys(optimalPositions).forEach((id) => {
-      this.tracksById[id].timeOffset =
-        minOffset - optimalPositions[id].relativeTime;
-      this.currentTime = minOffset;
-    });
+    Object.keys(optimalPositions).forEach((id) =>
+      runInAction(() => {
+        this.tracksById[id].timeOffset =
+          minOffset - optimalPositions[id].relativeTime;
+        this.currentTime = minOffset;
+      })
+    );
   };
 }
 
@@ -287,7 +287,7 @@ const store = new Store();
 
 (window as any).persist = store.persist;
 
-observe(store.tracksById, () => {
+observe(store.tracksById, (change) => {
   store.persist();
 });
 

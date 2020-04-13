@@ -13,6 +13,7 @@ const TrackSettings = ({ track }: Props) => {
   const color = store.getTrackColor(track.id);
   const currentPosition = store.getCurrentPoint(track.id);
   const [isEditing, setIsEditing] = useState(false);
+  const timeOffset = Math.round(store.tracksById[track.id].timeOffset / 1000);
   const safe = (fnc: (pc: TrackPoint) => React.ReactNode) =>
     currentPosition ? fnc(currentPosition) : "--";
 
@@ -42,7 +43,7 @@ const TrackSettings = ({ track }: Props) => {
               label="Offset in seconds"
               labelPosition="left corner"
               type="number"
-              val={`${store.tracksById[track.id].timeOffset / 1000}`}
+              value={timeOffset}
               onChange={(e) => {
                 store.tracksById[track.id].timeOffset = +e.target.value * 1000;
               }}
@@ -70,7 +71,7 @@ const TrackSettings = ({ track }: Props) => {
                   <i className="icon">
                     <IoMdSpeedometer />
                   </i>
-                  {safe((cp) => Math.round(cp.speed * 36) / 10)} km/h
+                  {safe((cp) => Math.round(cp.speed * 3.6))} km/h
                 </List.Content>
               </List.Item>
             </List>
