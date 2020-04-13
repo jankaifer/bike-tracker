@@ -3,6 +3,7 @@ import { v4 as uuid } from "uuid";
 import parseTrack from "parse-gpx/src/parseTrack";
 import xml2js from "xml2js";
 import dayjs from "dayjs";
+import { access } from "fs";
 
 const storeVersion = 2;
 
@@ -23,8 +24,7 @@ const getColor = (id: string, index: number) => {
   const niceColors = [
     "#CC0000",
     "#FF8000",
-    "#FFFF00",
-    "#00FF00",
+    "#00CC00",
     "#0080FF",
     "#7F00FF",
     "#FF00FF",
@@ -50,27 +50,20 @@ const convertToTrackPoint = (data: any) =>
     timestamp: dayjs(data.timestamp).valueOf(),
   } as Partial<TrackPoint>);
 
-const toRad = (deg: number) => (deg * Math.PI) / 180;
-
 const getPos = (position: TrackPoint) =>
-  [position.latitude, position.latitude] as [number, number];
+  [position.latitude, position.longitude] as [number, number];
 
 const computeDist = (
   [lat1, lon1]: [number, number],
   [lat2, lon2]: [number, number]
 ) => {
   const R = 6371e3; // metres
-  const φ1 = toRad(lat1);
-  const φ2 = toRad(lat2);
-  const Δφ = toRad(lat2 - lat1);
-  const Δλ = toRad(lon2 - lon1);
+  const metersPerDegree = (2 * R * Math.PI) / 360;
 
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const latDiff = Math.abs(lat1 - lat2);
+  const lonDiff = Math.abs(lon1 - lon2);
 
-  return R * c;
+  return Math.sqrt(latDiff * latDiff + lonDiff * lonDiff) * metersPerDegree;
 };
 
 const computeSpeed = (pos1: TrackPoint, pos2: TrackPoint) => {
@@ -100,16 +93,15 @@ const parseGPX = async (data: string, id: string, name: string) => {
         ...position,
         relativeTime: position.timestamp - startTime,
         speed: computeSpeed(
-          positions[i - 1] || position,
-          positions[i + 1] || position
+          positions[i - 2] || positions[i - 1] || position,
+          positions[i + 2] || positions[i + 1] || position
         ),
       } as TrackPoint)
   );
-
   console.log(relativePositions);
 
   return {
-    name: trk.name || name,
+    name: trk[0]?.name || name,
     id,
     positions: relativePositions,
     startTime,
@@ -122,6 +114,7 @@ class Store {
   @observable tracksById: { [key: string]: Track } = {};
   @observable currentTime = 0;
   @observable autoIncrement = false;
+  @observable autoIncrementSpeed = 60000;
 
   @computed get tracks() {
     return Object.values(this.tracksById);
@@ -155,6 +148,28 @@ class Store {
     delete this.tracksById[id];
   };
 
+  mixPositionsRatio = (
+    pos1: TrackPoint,
+    pos2: TrackPoint,
+    a: number,
+    b: number
+  ) => {
+    const computeProp = (prop: keyof TrackPoint) =>
+      avg(pos1[prop], pos2[prop], a, b);
+
+    const outVal: TrackPoint = {
+      elevation: computeProp("elevation"),
+      latitude: computeProp("latitude"),
+      longitude: computeProp("longitude"),
+      heartrate: computeProp("heartrate"),
+      relativeTime: computeProp("relativeTime"),
+      timestamp: computeProp("timestamp"),
+      speed: computeProp("speed"),
+    };
+
+    return outVal;
+  };
+
   getCurrentPoint = (id: string) => {
     const track = this.tracks.find(({ id: _id }) => _id === id);
     if (!track) throw new Error("id not found");
@@ -170,28 +185,12 @@ class Store {
 
     if (!before || !after) return null;
 
-    const computeMiddle = (a: number, b: number) =>
-      avg(
-        a,
-        b,
-        Math.abs(after.relativeTime + track.timeOffset - this.currentTime),
-        Math.abs(before.relativeTime + track.timeOffset - this.currentTime)
-      );
-
-    const computeProp = (prop: keyof typeof before & keyof typeof after) =>
-      computeMiddle(before[prop], after[prop]);
-
-    const outVal: TrackPoint = {
-      elevation: computeProp("elevation"),
-      latitude: computeProp("latitude"),
-      longitude: computeProp("longitude"),
-      heartrate: computeProp("heartrate"),
-      relativeTime: computeProp("relativeTime"),
-      timestamp: computeProp("timestamp"),
-      speed: computeProp("speed"),
-    };
-
-    return outVal;
+    return this.mixPositionsRatio(
+      before,
+      after,
+      Math.abs(after.relativeTime + track.timeOffset - this.currentTime),
+      Math.abs(before.relativeTime + track.timeOffset - this.currentTime)
+    );
   };
 
   persist = () => {
@@ -211,6 +210,77 @@ class Store {
         .find((pair) => pair[0] === id) || ["", Infinity])[1]
     );
   };
+
+  getClosestPoint = (
+    pos1: TrackPoint | undefined,
+    pos2: TrackPoint | undefined,
+    [lat, lng]: [number, number]
+  ) => {
+    if (!pos1) {
+      if (!pos2) throw new Error("Wrong points");
+      return pos2;
+    }
+    if (!pos2) return pos1;
+
+    let bestDist = Infinity;
+    let bestI = 0;
+    const PRECISION = 1000;
+
+    for (let i = 0; i < PRECISION; ++i) {
+      const currLat = avg(pos1.latitude, pos2.latitude, i, PRECISION - i);
+      const currLng = avg(pos1.longitude, pos2.longitude, i, PRECISION - i);
+      const currDist = computeDist([lat, lng], [currLat, currLng]);
+      if (currDist < bestDist) {
+        bestDist = currDist;
+        bestI = i;
+      }
+    }
+
+    return this.mixPositionsRatio(pos1, pos2, bestI, PRECISION - bestI);
+  };
+
+  getClosestPosition = ([lat, lng]: [number, number], track: Track) => {
+    const positions = [...track.positions];
+    positions.sort(
+      (a, b) =>
+        computeDist([lat, lng], [a.latitude, a.longitude]) -
+        computeDist([lat, lng], [b.latitude, b.longitude])
+    );
+
+    const index = track.positions.indexOf(positions[0]);
+    return this.getClosestPoint(
+      this.getClosestPoint(track.positions[index - 1], track.positions[index], [
+        lat,
+        lng,
+      ]),
+      this.getClosestPoint(track.positions[index], track.positions[index + 1], [
+        lat,
+        lng,
+      ]),
+      [lat, lng]
+    );
+  };
+
+  @action.bound alignTracks = ({ lat, lng }: { lat: number; lng: number }) => {
+    const optimalPositions = Object.keys(this.tracksById).reduce(
+      (acc, curr) => ({
+        ...acc,
+        [curr]: this.getClosestPosition([lat, lng], this.tracksById[curr]),
+      }),
+      {} as { [key: string]: TrackPoint }
+    );
+    const minOffset = Math.min(
+      ...Object.values(optimalPositions).map(
+        (position) => position.relativeTime
+      )
+    );
+
+    Object.keys(optimalPositions).forEach((id) => {
+      this.tracksById[id].timeOffset =
+        minOffset - optimalPositions[id].relativeTime;
+      this.currentTime = minOffset;
+    });
+  };
 }
 
 const store = new Store();
@@ -221,12 +291,11 @@ observe(store.tracksById, () => {
   store.persist();
 });
 
-const SPEED = 60;
 const FPS = 24;
 setInterval(() => {
   if (store.autoIncrement) {
     store.currentTime = Math.min(
-      store.currentTime + (SPEED * 1000) / FPS,
+      store.currentTime + store.autoIncrementSpeed / FPS,
       store.maxTime
     );
   }

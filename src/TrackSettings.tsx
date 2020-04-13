@@ -20,6 +20,8 @@ const TrackSettings = ({ track }: Props) => {
     <Segment
       style={{
         borderTop: `2px solid ${color}`,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <label
@@ -33,7 +35,7 @@ const TrackSettings = ({ track }: Props) => {
       >
         {track.name}
       </label>
-      <List horizontal>
+      <List horizontal style={{ display: "flex" }}>
         {isEditing ? (
           <List.Item>
             <Input
@@ -74,6 +76,7 @@ const TrackSettings = ({ track }: Props) => {
             </List>
           </List.Item>
         )}
+        <div style={{ flexGrow: 1, display: "inline-block" }} />
         <List.Item>
           <Button
             basic={!isEditing}

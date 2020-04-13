@@ -1,8 +1,8 @@
 import { observer } from "mobx-react";
-import React from "react";
+import React, { useState } from "react";
 import { Map, TileLayer } from "react-leaflet";
 import { Slider } from "react-semantic-ui-range";
-import { Segment, Button } from "semantic-ui-react";
+import { Segment, Button, Popup, Form, Icon } from "semantic-ui-react";
 import AddTrack from "./AddTrack";
 import "./App.css";
 import store from "./Store";
@@ -15,6 +15,9 @@ function App() {
   seconds %= 60;
   let hours = ~~(minutes / 60);
   minutes %= 60;
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAligningTracks, setIsAligningTracks] = useState(false);
 
   return (
     <div
@@ -39,7 +42,15 @@ function App() {
           {store.tracks.map((track) => (
             <TrackSettings key={track.id} track={track} />
           ))}
-          <AddTrack />
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setIsAligningTracks((v) => !v)}
+              basic={!isAligningTracks}
+            >
+              <Icon name="crosshairs" /> Align Tracks
+            </Button>
+            <AddTrack />
+          </div>
         </Segment>
       </div>
       {store.tracks.length && (
@@ -61,6 +72,33 @@ function App() {
             >
               {store.autoIncrement ? "Stop" : "Play"}
             </Button>
+            <Popup
+              trigger={
+                <Button
+                  basic={!isSettingsOpen}
+                  size="mini"
+                  circular
+                  icon="setting"
+                />
+              }
+              open={isSettingsOpen}
+              onOpen={() => setIsSettingsOpen(true)}
+              onClose={() => setIsSettingsOpen(false)}
+              on="click"
+              content={
+                <Form>
+                  <Form.Input
+                    label="Animation speed"
+                    type="number"
+                    value={store.autoIncrementSpeed / 1000}
+                    min="1"
+                    onChange={(e) => {
+                      store.autoIncrementSpeed = +e.target.value * 1000;
+                    }}
+                  />
+                </Form>
+              }
+            />
             <span style={{ width: "100px" }}>
               {hours}:{minutes}:{seconds}
             </span>
@@ -82,7 +120,19 @@ function App() {
           </Segment>
         </div>
       )}
-      <Map center={[49.75618698634207, 13.303053053095937]} zoom={15}>
+      <Map
+        center={[49.75618698634207, 13.303053053095937]}
+        zoom={15}
+        onClick={(e: any) => {
+          const position = e.latlng;
+          if (isAligningTracks) {
+            store.alignTracks(position);
+            store.autoIncrement = false;
+            setIsAligningTracks(false);
+          }
+        }}
+        style={isAligningTracks ? { cursor: "crosshair" } : {}}
+      >
         <TileLayer
           attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
