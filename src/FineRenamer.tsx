@@ -19,7 +19,14 @@ const FileRenamer = () => {
           }
         })
       );
-      a.download = trk[0]?.name ? `${trk[0].name}.gpx` : file.name;
+      const name = trk[0]?.name[0];
+      const time = trk[0]?.trkseg[0]?.trkpt[0]?.time[0]?.slice(0, 10);
+
+      console.log(name, time);
+
+      a.download = `${name || file.name.split(".")[0]}${
+        time ? "-" + time : ""
+      }.gpx`;
       a.click();
     });
   };
