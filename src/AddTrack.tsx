@@ -59,7 +59,7 @@ const AddTrack = () => {
         ))}
         <Segment {...(getRootProps() as any)}>
           <input {...getInputProps()} />
-          <p>+ Drag 'n' drop some files here, or click to select files +</p>
+          <p>Click here to select your .gpx track records.</p>
         </Segment>
       </Modal.Content>
       <Modal.Actions>
