@@ -34,6 +34,7 @@ const FileRenamer = () => {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: true,
     onDrop,
+    accept: ".gpx",
   });
 
   return (

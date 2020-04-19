@@ -15,6 +15,7 @@ const AddTrack = () => {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: true,
     onDrop,
+    accept: ".gpx",
   });
 
   const deleteFile = (file: File) =>
