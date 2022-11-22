@@ -24,7 +24,7 @@
     "react-dropzone": "^10.2.2",
     "react-icons": "^3.9.0",
     "react-leaflet": "^2.6.3",
-    "react-scripts": "3.4.1",
+    "react-scripts": "5.0.1",
     "react-semantic-ui-range": "^0.7.0",
     "semantic-ui-react": "^0.88.2",
     "typescript": "~3.7.2",
